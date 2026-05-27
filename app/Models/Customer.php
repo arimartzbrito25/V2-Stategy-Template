@@ -90,39 +90,38 @@ class Customer extends Model
             throw new \Exception('Minimum order amount is $5.00.');
         }
 
-        // --- Aplicación de descuento (OCP violation: switch sobre tipo) ---
+        // --- Cálculo de delivery fee (números mágicos, sin servicio) ---
+        $deliveryFee = 2.50;
+        if ($subtotal > 20.00) { $deliveryFee = 1.50; }
+        if ($subtotal > 50.00) { $deliveryFee = 0.00; }
+
+        // --- Aplicación de descuento (Strategy vía Discount::apply) ---
         $discountTotal = 0.0;
         $appliedDiscount = null;
 
         if (!empty($cart['discount_code'])) {
             $discount = Discount::where('code', $cart['discount_code'])->first();
-            if ($discount && now() >= $discount->valid_from && now() <= $discount->valid_to) {
-                if (!$discount->max_uses || $discount->current_uses < $discount->max_uses) {
-                    switch ($discount->type) {
-                        case 'percentage':
-                            $discountTotal = $subtotal * ($discount->value / 100);
-                            if ($discount->max_discount_amount) {
-                                $discountTotal = min($discountTotal, $discount->max_discount_amount);
-                            }
-                            break;
-                        case 'fixed_amount':
-                            $discountTotal = min($discount->value, $subtotal);
-                            break;
-                        case 'free_delivery':
-                            // handled below
-                            break;
-                    }
+            if ($discount) {
+                $draftOrder = new Order([
+                    'customer_id'  => $this->id,
+                    'vendor_id'    => $cart['vendor_id'],
+                    'subtotal'     => $subtotal,
+                    'delivery_fee' => $deliveryFee,
+                ]);
+                $draftOrder->setRelation(
+                    'items',
+                    collect($orderItems)->map(fn (array $item) => new OrderItem($item))
+                );
+
+                $discountTotal = $discount->apply($draftOrder);
+
+                if ($discountTotal > 0) {
                     $appliedDiscount = $discount;
+                    if ($discount->type === 'free_delivery') {
+                        $deliveryFee = 0.00;
+                    }
                 }
             }
-        }
-
-        // --- Cálculo de delivery fee (números mágicos, sin servicio) ---
-        $deliveryFee = 2.50;
-        if ($subtotal > 20.00) { $deliveryFee = 1.50; }
-        if ($subtotal > 50.00) { $deliveryFee = 0.00; }
-        if ($appliedDiscount && $appliedDiscount->type === 'free_delivery') {
-            $deliveryFee = 0.00;
         }
 
         $total = $subtotal - $discountTotal + $deliveryFee;

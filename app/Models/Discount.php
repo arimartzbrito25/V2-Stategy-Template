@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Discounts\DiscountStrategyFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -36,51 +37,12 @@ class Discount extends Model
             return 0.0;
         }
 
-        switch ($this->type) {
-            case 'percentage':
-                $discount = $order->subtotal * ($this->value / 100);
-                if ($this->max_discount_amount !== null) {
-                    $discount = min($discount, $this->max_discount_amount);
-                }
-                return (float) $discount;
+        $strategy = DiscountStrategyFactory::make($this->type);
 
-            case 'fixed_amount':
-                return (float) min($this->value, $order->subtotal);
-
-            case 'bogo':
-                // Buy one get one: devuelve el precio del item más barato de la orden
-                $cheapestPrice = $order->items
-                    ->map(fn($item) => $item->unit_price)
-                    ->sort()
-                    ->values()
-                    ->first();
-                return (float) ($cheapestPrice ?? 0.0);
-
-            case 'first_purchase':
-                // Verifica si es la primera compra del customer
-                $previousOrders = Order::where('customer_id', $order->customer_id)
-                    ->whereIn('status', ['delivered', 'paid', 'accepted', 'preparing', 'ready', 'picked_up'])
-                    ->where('id', '!=', $order->id)
-                    ->count();
-
-                if ($previousOrders > 0) {
-                    return 0.0;
-                }
-
-                $discount = $order->subtotal * ($this->value / 100);
-                if ($this->max_discount_amount !== null) {
-                    $discount = min($discount, $this->max_discount_amount);
-                }
-                return (float) $discount;
-
-            case 'free_delivery':
-                return (float) $order->delivery_fee;
-
-            default:
-                \App\Support\Logger::getInstance()->log(
-                    "Unknown discount type '{$this->type}' for discount {$this->id}", 'warning'
-                );
-                return 0.0;
+        if ($strategy === null) {
+            return 0.0;
         }
+
+        return $strategy->calculate($this, $order);
     }
 }
