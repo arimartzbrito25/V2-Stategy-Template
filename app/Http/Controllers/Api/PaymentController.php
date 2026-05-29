@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Orders\Commands\OrderCommandInvoker;
+use App\Orders\Commands\TransitionOrderCommand;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class PaymentController extends Controller
 {
+    public function __construct(private OrderCommandInvoker $commands) {}
+
     public function process(Request $request, Order $order): JsonResponse
     {
         $request->validate(['provider' => 'required|in:wompi,n1co,bac_transfer,cash']);
@@ -60,9 +64,7 @@ class PaymentController extends Controller
             }
 
             if ($success) {
-                $order->transitionTo('paid');
-                $order->save();
-                $order->notify('paid');
+                $this->commands->run(new TransitionOrderCommand($order, 'paid'));
             }
 
             \App\Support\Logger::getInstance()->log(

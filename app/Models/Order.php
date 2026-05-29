@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Orders\States\OrderStateFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -25,30 +26,7 @@ class Order extends Model
 
     public function transitionTo(string $newStatus): void
     {
-        $allowed = [
-            'created'   => ['paid', 'cancelled'],
-            'paid'      => ['accepted', 'cancelled', 'refunded'],
-            'accepted'  => ['preparing', 'cancelled'],
-            'preparing' => ['ready'],
-            'ready'     => ['picked_up'],
-            'picked_up' => ['delivered'],
-            'delivered' => ['refunded', 'cancelled'],
-            'cancelled' => [],
-            'refunded'  => [],
-        ];
-
-        if (!isset($allowed[$this->status])) {
-            throw new \Exception("Unknown current status: {$this->status}");
-        }
-
-        if (!in_array($newStatus, $allowed[$this->status])) {
-            throw new \Exception(
-                "Cannot transition from '{$this->status}' to '{$newStatus}'."
-            );
-        }
-
-        $this->status = $newStatus;
-        // Esto genera bugs cuando se olvida el save().
+        OrderStateFactory::make($this->status)->transitionTo($this, $newStatus);
     }
 
     public function validateOrder(): bool

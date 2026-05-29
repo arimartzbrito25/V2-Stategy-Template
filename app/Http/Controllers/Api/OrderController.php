@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Customer;
+use App\Orders\Commands\OrderCommandInvoker;
+use App\Orders\Commands\TransitionOrderCommand;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class OrderController extends Controller
 {
+    public function __construct(private OrderCommandInvoker $commands) {}
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -92,12 +96,7 @@ class OrderController extends Controller
         $request->validate(['status' => 'required|string']);
 
         try {
-            $order->transitionTo($request->status);
-            $order->save();            $order->notify($request->status);
-
-            \App\Support\Logger::getInstance()->log(
-                "Order {$order->id} status updated to {$request->status}"
-            );
+            $this->commands->run(new TransitionOrderCommand($order, $request->status));
 
             return response()->json(['message' => 'Status updated.', 'order' => $order]);
         } catch (\Exception $e) {
@@ -108,9 +107,8 @@ class OrderController extends Controller
     public function cancel(Request $request, Order $order): JsonResponse
     {
         try {
-            $order->transitionTo('cancelled');
-            $order->save();
-            $order->notify('cancelled');
+            $this->commands->run(new TransitionOrderCommand($order, 'cancelled'));
+
             return response()->json(['message' => 'Order cancelled.']);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -120,9 +118,8 @@ class OrderController extends Controller
     public function accept(Request $request, Order $order): JsonResponse
     {
         try {
-            $order->transitionTo('accepted');
-            $order->save();
-            $order->notify('accepted');
+            $this->commands->run(new TransitionOrderCommand($order, 'accepted'));
+
             return response()->json(['message' => 'Order accepted.']);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 422);
