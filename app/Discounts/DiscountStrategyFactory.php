@@ -20,7 +20,7 @@ class DiscountStrategyFactory
         $class = self::MAP[$type] ?? null;
 
         if ($class === null) {
-            Logger::getInstance()->log(
+            app(Logger::class)->log(
                 "Unknown discount type '{$type}'", 'warning'
             );
             return null;

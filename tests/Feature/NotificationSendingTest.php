@@ -6,10 +6,9 @@ use Tests\TestCase;
 use App\Models\User;
 use App\Models\Customer;
 use App\Models\Vendor;
-use App\Models\Order;
+use App\Models\Product;
 use App\Models\PaymentProvider;
 use App\Models\Category;
-use App\Models\Product;
 use App\Support\Logger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -17,12 +16,10 @@ class NotificationSendingTest extends TestCase
 {
     use RefreshDatabase;
 
-    // SMELL: usa Logger::getInstance() directamente.
-    // El test falla si otro test anterior ya llenó el Logger con logs.
     public function test_order_creation_sends_notification(): void
     {
-        $logger = Logger::getInstance();
-        $logger->clearLogs(); // necesario porque el Logger es global
+        $logger = app(Logger::class);
+        $logger->clearLogs();
 
         PaymentProvider::create(['name' => 'Wompi', 'api_endpoint' => 'x', 'api_key' => 'k', 'enabled' => true, 'priority' => 1]);
         $vendorUser = User::create(['name' => 'V', 'email' => 'vn@t.dev', 'password' => 'Password1', 'role' => 'vendor']);
@@ -39,6 +36,6 @@ class NotificationSendingTest extends TestCase
             'payment_method' => 'cash',
         ]);
 
-        $this->assertNotEmpty($logger->getLogs()); // SMELL: assertion débil
+        $this->assertNotEmpty($logger->getLogs());
     }
 }

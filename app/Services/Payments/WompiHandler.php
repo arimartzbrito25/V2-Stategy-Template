@@ -15,7 +15,7 @@ class WompiHandler
     // Nombre en español, parámetros distintos a N1co
     public function cobrar(float $monto, string $moneda, array $datos): array
     {
-        \App\Support\Logger::getInstance()->log("Wompi: cobrar {$monto} {$moneda}");
+        app(\App\Support\Logger::class)->log("Wompi: cobrar {$monto} {$moneda}");
         return [
             'id_transaccion' => 'WOMPI-' . strtoupper(uniqid()),
             'estado'         => 'APROBADO',

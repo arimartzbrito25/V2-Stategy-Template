@@ -23,7 +23,7 @@ class Courier extends Model
         $this->current_longitude = $longitude;
         $this->save();
 
-        \App\Support\Logger::getInstance()->log(
+        app(\App\Support\Logger::class)->log(
             "Courier {$this->id} location updated: {$latitude},{$longitude}"
         );
     }

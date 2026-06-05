@@ -200,28 +200,7 @@ class Customer extends Model
             $order->status = 'paid';
             $order->save();
 
-            // --- Notificaciones (Observer violation: hardcoded) ---
-            $emailService = new \App\Services\EmailService();
-            $smsService   = new \App\Services\SMSService();
-
-            $emailService->send(
-                $this->user->email,
-                'Pedido confirmado',
-                "Tu pedido #{$order->id} ha sido recibido. Total: \${$total}"
-            );
-            $emailService->send(
-                $vendor->user->email,
-                'Nuevo pedido',
-                "Tienes un nuevo pedido #{$order->id} por \${$total}"
-            );
-            if ($this->user->phone) {
-                $smsService->send(
-                    $this->user->phone,
-                    "Pedido #{$order->id} confirmado. Total: \${$total}"
-                );
-            }
-
-            \App\Support\Logger::getInstance()->log(
+            app(\App\Support\Logger::class)->log(
                 "Order {$order->id} created by customer {$this->id}. Total: {$total}"
             );
 
@@ -234,7 +213,7 @@ class Customer extends Model
 
         } catch (\Exception $e) {
             \DB::rollBack();
-            \App\Support\Logger::getInstance()->log(
+            app(\App\Support\Logger::class)->log(
                 "Order creation failed for customer {$this->id}: " . $e->getMessage(), 'error'
             );
             throw $e;

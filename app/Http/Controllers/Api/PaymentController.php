@@ -6,12 +6,16 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Orders\Commands\OrderCommandInvoker;
 use App\Orders\Commands\TransitionOrderCommand;
+use App\Support\Logger;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class PaymentController extends Controller
 {
-    public function __construct(private OrderCommandInvoker $commands) {}
+    public function __construct(
+        private OrderCommandInvoker $commands,
+        private Logger $logger,
+    ) {}
 
     public function process(Request $request, Order $order): JsonResponse
     {
@@ -67,14 +71,14 @@ class PaymentController extends Controller
                 $this->commands->run(new TransitionOrderCommand($order, 'paid'));
             }
 
-            \App\Support\Logger::getInstance()->log(
+            $this->logger->log(
                 "Payment " . ($success ? 'succeeded' : 'failed') . " for order {$order->id} via {$provider}"
             );
 
             return response()->json(['success' => $success, 'transaction_id' => $transactionId]);
 
         } catch (\Exception $e) {
-            \App\Support\Logger::getInstance()->log(
+            $this->logger->log(
                 "Payment error order {$order->id}: " . $e->getMessage(), 'error'
             );
             return response()->json(['error' => 'Payment processing failed.'], 500);

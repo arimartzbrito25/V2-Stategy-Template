@@ -14,7 +14,7 @@ class N1coHandler
 
     public function makePayment(array $data): array
     {
-        \App\Support\Logger::getInstance()->log("N1co: makePayment " . ($data['amount'] / 100));
+        app(\App\Support\Logger::class)->log("N1co: makePayment " . ($data['amount'] / 100));
         return [
             'payment_id' => 'N1CO-' . strtoupper(uniqid()),
             'status'     => 'success',

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Notifications\Channels\NotificationChannelFactory;
+use App\Support\Logger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -20,7 +22,6 @@ class Notification extends Model
         'sent_at'      => 'datetime',
     ];
 
-    // En lugar de Decorator apilable, usa flags en BD y condicionales.
     public function prepareContent(): string
     {
         $content = $this->content;
@@ -55,19 +56,8 @@ class Notification extends Model
         $content = $this->prepareContent();
 
         try {
-            if ($this->channel === 'email') {
-                $service = new \App\Services\EmailService();
-                $service->send($this->getRecipientEmail(), $this->subject, $content);
-            } elseif ($this->channel === 'sms') {
-                $service = new \App\Services\SMSService();
-                $service->send($this->getRecipientPhone(), $content);
-            } elseif ($this->channel === 'push') {
-                $service = new \App\Services\PushService();
-                $service->send($this->recipient_id, $this->subject, $content);
-            } elseif ($this->channel === 'whatsapp') {
-                $service = new \App\Services\WhatsAppService();
-                $service->send($this->getRecipientPhone(), $content);
-            }
+            $channel = NotificationChannelFactory::create($this->channel);
+            $channel->send($this, $content);
 
             $this->sent    = true;
             $this->sent_at = now();
@@ -80,19 +70,7 @@ class Notification extends Model
         }
     }
 
-    private function getRecipientEmail(): string
-    {
-        $recipient = $this->getRecipient();
-        return $recipient?->user?->email ?? '';
-    }
-
-    private function getRecipientPhone(): string
-    {
-        $recipient = $this->getRecipient();
-        return $recipient?->user?->phone ?? '';
-    }
-
-    private function getRecipient()
+    public function resolveRecipient()
     {
         if ($this->recipient_type === 'customer') {
             return Customer::find($this->recipient_id);
@@ -116,7 +94,7 @@ class Notification extends Model
 
     private function doLog(string $content): void
     {
-        \App\Support\Logger::getInstance()->log(
+        app(Logger::class)->log(
             "Notification [{$this->channel}] to {$this->recipient_type}:{$this->recipient_id} - " .
             substr($content, 0, 60)
         );

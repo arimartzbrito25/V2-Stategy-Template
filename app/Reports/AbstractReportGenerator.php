@@ -52,6 +52,6 @@ abstract class AbstractReportGenerator
 
     protected function notify(string $path): void
     {
-        Logger::getInstance()->log("{$this->logLabel()} report generated: " . basename($path));
+        app(Logger::class)->log("{$this->logLabel()} report generated: " . basename($path));
     }
 }

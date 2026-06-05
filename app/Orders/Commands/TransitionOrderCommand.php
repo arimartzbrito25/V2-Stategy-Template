@@ -16,9 +16,8 @@ class TransitionOrderCommand implements OrderCommand
     {
         $this->order->transitionTo($this->targetStatus);
         $this->order->save();
-        $this->order->notify($this->targetStatus);
 
-        Logger::getInstance()->log(
+        app(Logger::class)->log(
             "Order {$this->order->id} status updated to {$this->targetStatus}"
         );
     }
