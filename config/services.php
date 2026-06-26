@@ -50,4 +50,8 @@ return [
         'endpoint' => env('BAC_ENDPOINT', 'https://sandbox.bac.com/v1'),
     ],
 
+    'payment' => [
+        'default' => env('PAYMENT_PROVIDER', 'wompi'),
+    ],
+
 ];
